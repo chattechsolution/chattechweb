@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Chat Tech Solutions</title>
+
+    <!-- PWA Meta tags -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0891b2">
+    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=Chat+Tech&background=0891b2&color=fff&size=192">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-primary': '#f8f9fb',
+                        'bg-secondary': '#ffffff',
+                        'bg-glass': 'rgba(255, 255, 255, 0.65)',
+                        'accent-cyan': '#0891b2',
+                        'accent-purple': '#7c3aed',
+                        'text-primary': '#0f172a',
+                        'text-secondary': '#475569',
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        heading: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg-primary: #f8f9fb;
+            --bg-secondary: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.65);
+            --accent-cyan: #0891b2;
+            --accent-purple: #7c3aed;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: perspective(1000px) rotateX(2deg) rotateY(2deg);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: white;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+    </style>
+
+    <!-- React 18 & Babel via CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+</head>
+<body class="antialiased min-h-screen relative overflow-hidden">
+    <!-- Background Accents -->
+    <div class="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-accent-cyan/10 blur-[100px] z-0 pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-accent-purple/10 blur-[100px] z-0 pointer-events-none"></div>
+
+    <div id="root" class="relative z-10 flex min-h-screen items-center justify-center p-4"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        function Login() {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+
+                try {
+                    const response = await fetch('../api/auth.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'login', email, password })
+                    });
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        if (data.user.role === 'admin') {
+                            window.location.href = 'admin.html';
+                        } else {
+                            window.location.href = 'client_dashboard.html';
+                        }
+                    } else {
+                        setError(data.error || 'Login failed');
+                    }
+                } catch (err) {
+                    setError('An error occurred during login.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="max-w-md w-full glass-card rounded-2xl p-8 md:p-10">
+                    <div className="text-center mb-10">
+                        <h1 className="font-heading text-4xl font-bold text-text-primary mb-3">Chat Tech</h1>
+                        <p className="text-text-secondary">Sign in to your client portal</p>
+                    </div>
+
+                    {error && (
+                        <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-xl text-sm text-center border border-rose-100">
+                            {error}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-text-primary mb-2">Email Address</label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-5 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan outline-none transition backdrop-blur-sm"
+                                placeholder="name@company.com"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-text-primary mb-2">Password</label>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-5 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan outline-none transition backdrop-blur-sm"
+                                placeholder="••••••••"
+                                required
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn-primary w-full py-4 px-6 font-semibold rounded-xl shadow-lg disabled:opacity-50 mt-4"
+                        >
+                            {loading ? 'Signing in...' : 'Sign In'}
+                        </button>
+                    </form>
+
+                    <div className="mt-8 text-center text-sm text-text-secondary">
+                        Need help? Contact <a href="#" className="text-accent-cyan hover:underline">support@chattechsolutions.com</a>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Login />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker.register("./sw.js")
+                    .then(reg => console.log("SW registered"))
+                    .catch(err => console.log("SW registration failed:", err));
+            });
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Chat Tech Solutions</title>
+
+    <!-- PWA Meta tags -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0891b2">
+    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=Chat+Tech&background=0891b2&color=fff&size=192">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-primary': '#f8f9fb',
+                        'bg-secondary': '#ffffff',
+                        'bg-glass': 'rgba(255, 255, 255, 0.65)',
+                        'accent-cyan': '#0891b2',
+                        'accent-purple': '#7c3aed',
+                        'text-primary': '#0f172a',
+                        'text-secondary': '#475569',
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        heading: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- React 18 & Babel via CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #f8f9fb;
+            --bg-secondary: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.65);
+            --accent-cyan: #0891b2;
+            --accent-purple: #7c3aed;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: perspective(1000px) rotateX(1deg) rotateY(1deg);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-sidebar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: white;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="antialiased h-screen overflow-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function AdminDashboard() {
+            const [activeTab, setActiveTab] = useState('overview');
+            const [stats, setStats] = useState({ total_clients: 0, pending_revenue: 0 });
+            const [clients, setClients] = useState([]);
+            const [financials, setFinancials] = useState({ total_revenue: 0, total_expenses: 0, profit: 0, profit_margin: 0, expenses: [] });
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                checkAuth();
+                fetchStats();
+                fetchClients();
+                fetchFinancials();
+            }, []);
+
+            const checkAuth = async () => {
+                const res = await fetch('../api/auth.php');
+                const data = await res.json();
+                if (!res.ok || (data.user && data.user.role) !== 'admin') {
+                    window.location.href = 'login.html';
+                }
+            };
+
+            const fetchStats = async () => {
+                const res = await fetch('../api/admin_api.php?action=stats');
+                const data = await res.json();
+                if (res.ok) setStats(data);
+            };
+
+            const fetchClients = async () => {
+                const res = await fetch('../api/admin_api.php?action=clients');
+                const data = await res.json();
+                if (res.ok) setClients(data);
+                setLoading(false);
+            };
+
+            const fetchFinancials = async () => {
+                const res = await fetch('../api/admin_api.php?action=financials');
+                const data = await res.json();
+                if (res.ok) setFinancials(data);
+            };
+
+            const handleLogout = async () => {
+                await fetch('../api/auth.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'logout' })
+                });
+                window.location.href = 'login.html';
+            };
+
+            return (
+                <div className="flex h-screen w-full relative">
+                    {/* Background acccents */}
+                    <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-accent-cyan/5 blur-[120px] z-0 pointer-events-none"></div>
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-accent-purple/5 blur-[120px] z-0 pointer-events-none"></div>
+
+                    {/* Sidebar */}
+                    <div className="w-64 glass-sidebar text-white flex flex-col z-20 shadow-2xl">
+                        <div className="p-6">
+                            <h2 className="text-2xl font-heading font-bold gradient-text">Chat Tech</h2>
+                            <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Admin Portal</p>
+                        </div>
+                        <nav className="flex-1 px-4 space-y-2 mt-4">
+                            <button
+                                onClick={() => setActiveTab('overview')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'overview' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                <i className="fas fa-home w-6"></i> Overview
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('roster')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'roster' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                <i className="fas fa-users w-6"></i> Client Roster
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('onboard')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'onboard' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                <i className="fas fa-user-plus w-6"></i> Onboard Client
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('financials')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'financials' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                <i className="fas fa-chart-line w-6"></i> Financials
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('settings')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'settings' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                <i className="fas fa-cog w-6"></i> Settings
+                            </button>
+                        </nav>
+                        <div className="p-4 border-t border-slate-800">
+                            <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-xl transition font-medium">
+                                <i className="fas fa-sign-out-alt w-6"></i> Logout
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="flex-1 flex flex-col overflow-hidden z-10">
+                        <header className="bg-white/80 backdrop-blur-md shadow-sm px-8 py-5 flex justify-between items-center z-10 border-b border-slate-200/50">
+                            <h1 className="text-2xl font-heading font-semibold text-text-primary capitalize">{activeTab.replace('_', ' ')}</h1>
+                            <div className="flex items-center space-x-4">
+                                <div className="h-10 w-10 rounded-full btn-primary flex items-center justify-center font-bold shadow-md">
+                                    A
+                                </div>
+                            </div>
+                        </header>
+
+                        <main className="flex-1 overflow-x-hidden overflow-y-auto p-8">
+                            {loading ? (
+                                <div className="flex justify-center items-center h-64">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-cyan"></div>
+                                </div>
+                            ) : (
+                                <div>
+                                    {activeTab === 'overview' && <Overview stats={stats} />}
+                                    {activeTab === 'roster' && <ClientRoster clients={clients} />}
+                                    {activeTab === 'onboard' && <OnboardClient fetchClients={fetchClients} />}
+                                    {activeTab === 'financials' && <Financials financials={financials} refresh={fetchFinancials} />}
+                                    {activeTab === 'settings' && <GlobalSettings />}
+                                </div>
+                            )}
+                        </main>
+                    </div>
+                </div>
+            );
+        }
+
+        function Overview({ stats }) {
+            return (
+                <div className="space-y-6">
+                    {stats.expiring_services_count > 0 && (
+                        <div className="bg-rose-500/10 border-l-4 border-rose-500 text-rose-700 p-4 rounded-r-xl pulse-warning flex items-center shadow-sm">
+                            <i className="fas fa-exclamation-triangle text-xl mr-4"></i>
+                            <div>
+                                <h4 className="font-bold font-heading">Action Required</h4>
+                                <p className="text-sm">{stats.expiring_services_count} service(s) will expire in the next 15 days. Please review to avoid client service interruption.</p>
+                            </div>
+                        </div>
+                    )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="glass-card rounded-2xl p-6 border-l-4 border-l-accent-cyan relative overflow-hidden">
+                        <i className="fas fa-users absolute top-6 right-6 text-4xl text-accent-cyan/10"></i>
+                        <h3 className="text-text-secondary text-sm font-medium mb-2 uppercase tracking-wide">Total Clients</h3>
+                        <p className="text-4xl font-heading font-bold text-text-primary">{stats.total_clients}</p>
+                    </div>
+                    <div className="glass-card rounded-2xl p-6 border-l-4 border-l-emerald-500 relative overflow-hidden">
+                        <i className="fas fa-file-invoice-dollar absolute top-6 right-6 text-4xl text-emerald-500/10"></i>
+                        <h3 className="text-text-secondary text-sm font-medium mb-2 uppercase tracking-wide">Pending Revenue</h3>
+                        <p className="text-4xl font-heading font-bold text-text-primary">${parseFloat(stats.pending_revenue || 0).toFixed(2)}</p>
+                    </div>
+                </div>
+                </div>
+            );
+        }
+
+        function ClientRoster({ clients }) {
+            return (
+                <div className="glass-card rounded-2xl overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
+                                <th className="p-5 font-semibold">ID</th>
+                                <th className="p-5 font-semibold">Client Name</th>
+                                <th className="p-5 font-semibold">Email</th>
+                                <th className="p-5 font-semibold">Joined Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {clients.map(client => (
+                                <tr key={client.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
+                                    <td className="p-5 text-text-secondary">#{client.id}</td>
+                                    <td className="p-5 font-medium text-text-primary">{client.name}</td>
+                                    <td className="p-5 text-text-secondary">{client.email}</td>
+                                    <td className="p-5 text-text-secondary">{new Date(client.created_at).toLocaleDateString()}</td>
+                                </tr>
+                            ))}
+                            {clients.length === 0 && (
+                                <tr>
+                                    <td colSpan="4" className="p-10 text-center text-text-secondary">No clients found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        function OnboardClient({ fetchClients }) {
+            const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+            const [message, setMessage] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create_client', ...formData })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    setMessage('Client created successfully!');
+                    setFormData({ name: '', email: '', password: '' });
+                    fetchClients();
+                } else {
+                    setMessage('Error: ' + (data.error || 'Failed to create client'));
+                }
+            };
+
+            return (
+                <div className="max-w-2xl glass-card rounded-2xl p-8">
+                    <h2 className="text-2xl font-heading font-semibold mb-6 text-text-primary">Create New Client Account</h2>
+
+                    {message && (
+                        <div className={`mb-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                            {message}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Company / Client Name</label>
+                            <input
+                                type="text" required
+                                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan outline-none transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Email Address</label>
+                            <input
+                                type="email" required
+                                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan outline-none transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Temporary Password</label>
+                            <input
+                                type="password" required
+                                value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan outline-none transition"
+                            />
+                        </div>
+                        <button type="submit" className="btn-primary mt-4 px-8 py-3 font-semibold rounded-xl shadow-lg">
+                            Create Client
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        function Financials({ financials, refresh }) {
+            const [formData, setFormData] = useState({ description: '', amount: '', date: '' });
+            const [message, setMessage] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create_expense', ...formData })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    setMessage('Expense logged successfully!');
+                    setFormData({ description: '', amount: '', date: '' });
+                    refresh();
+                } else {
+                    setMessage('Error: ' + (data.error || 'Failed to log expense'));
+                }
+            };
+
+            return (
+                <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="glass-card rounded-2xl p-6 border-l-4 border-l-emerald-500">
+                            <h3 className="text-text-secondary text-sm font-medium mb-1 uppercase tracking-wide">Total Revenue</h3>
+                            <p className="text-3xl font-heading font-bold text-text-primary">${parseFloat(financials.total_revenue || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="glass-card rounded-2xl p-6 border-l-4 border-l-rose-500">
+                            <h3 className="text-text-secondary text-sm font-medium mb-1 uppercase tracking-wide">Total Expenses</h3>
+                            <p className="text-3xl font-heading font-bold text-text-primary">${parseFloat(financials.total_expenses || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="glass-card rounded-2xl p-6 border-l-4 border-l-accent-purple">
+                            <h3 className="text-text-secondary text-sm font-medium mb-1 uppercase tracking-wide">Net Profit</h3>
+                            <p className="text-3xl font-heading font-bold text-text-primary">${parseFloat(financials.profit || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="glass-card rounded-2xl p-6 border-l-4 border-l-accent-cyan">
+                            <h3 className="text-text-secondary text-sm font-medium mb-1 uppercase tracking-wide">Profit Margin</h3>
+                            <p className="text-3xl font-heading font-bold text-text-primary">{parseFloat(financials.profit_margin || 0).toFixed(1)}%</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-1">
+                            <div className="glass-card rounded-2xl p-6">
+                                <h2 className="text-xl font-heading font-semibold mb-5 text-text-primary">Log Expense</h2>
+                                {message && (
+                                    <div className={`mb-4 p-3 rounded-lg text-sm border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                                        {message}
+                                    </div>
+                                )}
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-primary mb-1">Description</label>
+                                        <input type="text" required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 bg-white/70 border border-slate-200 rounded-lg focus:ring-2 focus:ring-accent-cyan outline-none transition" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-primary mb-1">Amount ($)</label>
+                                        <input type="number" step="0.01" required value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full px-4 py-2 bg-white/70 border border-slate-200 rounded-lg focus:ring-2 focus:ring-accent-cyan outline-none transition" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-text-primary mb-1">Date</label>
+                                        <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-white/70 border border-slate-200 rounded-lg focus:ring-2 focus:ring-accent-cyan outline-none transition" />
+                                    </div>
+                                    <button type="submit" className="w-full btn-primary py-3 rounded-lg font-semibold mt-2">Log Expense</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-2">
+                            <div className="glass-card rounded-2xl overflow-hidden h-full">
+                                <div className="p-6 border-b border-slate-100/50">
+                                    <h2 className="text-xl font-heading font-semibold text-text-primary">Recent Expenses</h2>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/50 text-text-secondary text-sm uppercase tracking-wide">
+                                                <th className="p-4 font-semibold">Date</th>
+                                                <th className="p-4 font-semibold">Description</th>
+                                                <th className="p-4 font-semibold">Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {financials.expenses.length === 0 ? (
+                                                <tr><td colSpan="3" className="p-8 text-center text-text-secondary">No expenses logged.</td></tr>
+                                            ) : (
+                                                financials.expenses.map(exp => (
+                                                    <tr key={exp.id} className="border-t border-slate-100/50 hover:bg-slate-50/50 transition">
+                                                        <td className="p-4 text-text-secondary">{new Date(exp.expense_date).toLocaleDateString()}</td>
+                                                        <td className="p-4 font-medium text-text-primary">{exp.description}</td>
+                                                        <td className="p-4 font-bold text-rose-600">${parseFloat(exp.amount).toFixed(2)}</td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function GlobalSettings() {
+            const [settings, setSettings] = useState({ razorpay_key_id: '', razorpay_key_secret: '' });
+            const [message, setMessage] = useState('');
+
+            useEffect(() => {
+                fetch('../api/admin_api.php?action=settings')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && !data.error) {
+                            setSettings({
+                                razorpay_key_id: data.razorpay_key_id || '',
+                                razorpay_key_secret: data.razorpay_key_secret || ''
+                            });
+                        }
+                    });
+            }, []);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'save_settings', ...settings })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    setMessage('Settings saved successfully!');
+                } else {
+                    setMessage('Error saving settings.');
+                }
+            };
+
+            return (
+                <div className="max-w-2xl glass-card rounded-2xl p-8">
+                    <h2 className="text-2xl font-heading font-semibold mb-2 text-text-primary">Payment Gateway Integration</h2>
+                    <p className="text-text-secondary mb-8">Configure your Razorpay API keys to accept client payments.</p>
+
+                    {message && (
+                        <div className={`mb-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                            {message}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Razorpay Key ID</label>
+                            <input
+                                type="text" required
+                                value={settings.razorpay_key_id} onChange={e => setSettings({...settings, razorpay_key_id: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition font-mono text-sm"
+                                placeholder="rzp_test_..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Razorpay Key Secret</label>
+                            <input
+                                type="password" required
+                                value={settings.razorpay_key_secret} onChange={e => setSettings({...settings, razorpay_key_secret: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition font-mono text-sm"
+                            />
+                        </div>
+                        <button type="submit" className="btn-primary mt-4 px-8 py-3 font-semibold rounded-xl shadow-lg">
+                            Save Settings
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AdminDashboard />);
+    </script>
+</body>
+</html>
