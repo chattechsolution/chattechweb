@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker.register("./sw.js")
+                    .then(reg => console.log("SW registered"))
+                    .catch(err => console.log("SW registration failed:", err));
+            });
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Portal - Chat Tech Solutions</title>
+
+    <!-- PWA Meta tags -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0891b2">
+    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=Chat+Tech&background=0891b2&color=fff&size=192">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-primary': '#f8f9fb',
+                        'bg-secondary': '#ffffff',
+                        'bg-glass': 'rgba(255, 255, 255, 0.65)',
+                        'accent-cyan': '#0891b2',
+                        'accent-purple': '#7c3aed',
+                        'text-primary': '#0f172a',
+                        'text-secondary': '#475569',
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        heading: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg-primary: #f8f9fb;
+            --bg-secondary: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.65);
+            --accent-cyan: #0891b2;
+            --accent-purple: #7c3aed;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: perspective(1000px) rotateX(1deg) rotateY(1deg);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: white;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pulse-warning {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
+    </style>
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- React 18 & Babel via CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body class="antialiased h-screen overflow-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function ClientDashboard() {
+            const [activeTab, setActiveTab] = useState('services');
+            const [services, setServices] = useState([]);
+            const [invoices, setInvoices] = useState([]);
+            const [tickets, setTickets] = useState([]);
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                checkAuth();
+            }, []);
+
+            useEffect(() => {
+                if (user) {
+                    if (activeTab === 'services') fetchServices();
+                    if (activeTab === 'billing') fetchInvoices();
+                    if (activeTab === 'support') fetchTickets();
+                }
+            }, [activeTab, user]);
+
+            const fetchTickets = async () => {
+                const res = await fetch('../api/client_api.php?action=tickets');
+                if (res.ok) setTickets(await res.json());
+            };
+
+            const checkAuth = async () => {
+                const res = await fetch('../api/auth.php');
+                const data = await res.json();
+                if (!res.ok || (data.user && data.user.role) !== 'client') {
+                    window.location.href = 'login.html';
+                } else {
+                    setUser(data.user);
+                    setLoading(false);
+                }
+            };
+
+            const fetchServices = async () => {
+                const res = await fetch('../api/client_api.php?action=services');
+                if (res.ok) setServices(await res.json());
+            };
+
+            const fetchInvoices = async () => {
+                const res = await fetch('../api/client_api.php?action=invoices');
+                if (res.ok) setInvoices(await res.json());
+            };
+
+            const handleLogout = async () => {
+                await fetch('../api/auth.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'logout' })
+                });
+                window.location.href = 'login.html';
+            };
+
+            if (loading) {
+                return (
+                    <div className="flex justify-center items-center h-screen bg-bg-primary">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-cyan"></div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex h-screen w-full relative">
+                    {/* Background acccents */}
+                    <div className="absolute top-[10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-accent-cyan/5 blur-[120px] z-0 pointer-events-none"></div>
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-accent-purple/5 blur-[120px] z-0 pointer-events-none"></div>
+
+                    {/* Sidebar */}
+                    <div className="w-64 glass-sidebar text-slate-800 flex flex-col z-20 shadow-xl">
+                        <div className="p-6">
+                            <h2 className="text-2xl font-heading font-bold gradient-text">Client Portal</h2>
+                            <p className="text-sm text-accent-cyan mt-1 font-medium truncate">{(user && user.name)}</p>
+                        </div>
+                        <nav className="flex-1 px-4 space-y-2 mt-4">
+                            <button
+                                onClick={() => setActiveTab('services')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'services' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-server w-6 mr-3 text-center"></i> My Services
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('billing')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'billing' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-file-invoice-dollar w-6 mr-3 text-center"></i> Billing
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('support')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'support' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-life-ring w-6 mr-3 text-center"></i> Support/Tickets
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('profile')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'profile' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-user-cog w-6 mr-3 text-center"></i> Profile & Settings
+                            </button>
+                        </nav>
+                        <div className="p-4 border-t border-slate-100">
+                            <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition font-medium">
+                                <i className="fas fa-sign-out-alt w-6 mr-3 text-center"></i> Logout
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="flex-1 flex flex-col overflow-hidden z-10">
+                        <header className="bg-white/80 backdrop-blur-md shadow-sm px-8 py-5 flex justify-between items-center z-10 border-b border-slate-200/50">
+                            <h1 className="text-2xl font-heading font-semibold text-text-primary capitalize">{activeTab}</h1>
+                            <div>
+                                <img src="https://ui-avatars.com/api/?name=Chat+Tech&background=0891b2&color=fff" alt="Logo" className="h-10 rounded-xl shadow-sm" />
+                            </div>
+                        </header>
+
+                        <main className="flex-1 overflow-x-hidden overflow-y-auto p-8">
+                            <div className="max-w-6xl mx-auto">
+                                {activeTab === 'services' && <ServicesTab services={services} />}
+                                {activeTab === 'billing' && <BillingTab invoices={invoices} refreshInvoices={fetchInvoices} />}
+                                {activeTab === 'support' && <SupportTab tickets={tickets} refreshTickets={fetchTickets} />}
+                                {activeTab === 'profile' && <ProfileTab user={user} />}
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+        }
+
+        function SupportTab({ tickets, refreshTickets }) {
+            const [formData, setFormData] = useState({ subject: '', message: '' });
+            const [message, setMessage] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/client_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create_ticket', ...formData })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    setMessage('Ticket created successfully! We will get back to you soon.');
+                    setFormData({ subject: '', message: '' });
+                    refreshTickets();
+                } else {
+                    setMessage('Error: ' + (data.error || 'Failed to create ticket'));
+                }
+            };
+
+            return (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-1">
+                        <div className="glass-card rounded-2xl p-8">
+                            <h2 className="text-2xl font-heading font-semibold mb-6 text-text-primary">Create Ticket</h2>
+                            {message && (
+                                <div className={`mb-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                                    {message}
+                                </div>
+                            )}
+                            <form onSubmit={handleSubmit} className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-text-primary mb-2">Subject</label>
+                                    <input
+                                        type="text" required
+                                        value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})}
+                                        className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                                        placeholder="Brief summary of issue"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-primary mb-2">Message</label>
+                                    <textarea
+                                        required rows="5"
+                                        value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})}
+                                        className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition resize-none"
+                                        placeholder="Describe your issue in detail..."
+                                    ></textarea>
+                                </div>
+                                <button type="submit" className="btn-primary w-full py-4 font-semibold rounded-xl shadow-lg mt-2">
+                                    Submit Ticket
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div className="lg:col-span-2">
+                        <div className="glass-card rounded-2xl overflow-hidden">
+                            <div className="p-6 border-b border-slate-100/50">
+                                <h2 className="text-xl font-heading font-semibold text-text-primary">Your Tickets</h2>
+                            </div>
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
+                                        <th className="p-5 font-semibold">Subject</th>
+                                        <th className="p-5 font-semibold">Status</th>
+                                        <th className="p-5 font-semibold">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tickets.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="3" className="p-10 text-center text-text-secondary">No support tickets found.</td>
+                                        </tr>
+                                    ) : (
+                                        tickets.map(ticket => (
+                                            <tr key={ticket.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
+                                                <td className="p-5 font-medium text-text-primary">
+                                                    {ticket.subject}
+                                                </td>
+                                                <td className="p-5">
+                                                    <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                                                        ticket.status === 'open' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'
+                                                    }`}>
+                                                        {ticket.status}
+                                                    </span>
+                                                </td>
+                                                <td className="p-5 text-text-secondary text-sm">{new Date(ticket.created_at).toLocaleDateString()}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function ProfileTab({ user }) {
+            const [formData, setFormData] = useState({ name: (user && user.name) || '', email: (user && user.email) || '', password: '' });
+            const [message, setMessage] = useState('');
+
+            // To fetch full user details if needed, but session info is usually enough for basic profile
+            // We use user object from main state
+            useEffect(() => {
+                if(user) {
+                    setFormData(prev => ({...prev, name: user.name, email: user.email}));
+                }
+            }, [user]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/client_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'update_profile', ...formData })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    setMessage('Profile updated successfully! Refreshing...');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    setMessage('Error: ' + (data.error || 'Failed to update profile'));
+                }
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto glass-card rounded-2xl p-8">
+                    <h2 className="text-2xl font-heading font-semibold mb-2 text-text-primary">Profile & Settings</h2>
+                    <p className="text-text-secondary mb-8">Update your account details below. Leave password blank if you do not wish to change it.</p>
+
+                    {message && (
+                        <div className={`mb-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                            {message}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Full Name</label>
+                            <input
+                                type="text" required
+                                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Email Address</label>
+                            <input
+                                type="email" required
+                                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">New Password (Optional)</label>
+                            <input
+                                type="password"
+                                value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                                placeholder="Enter a new password"
+                            />
+                        </div>
+                        <button type="submit" className="btn-primary mt-4 px-8 py-4 font-semibold rounded-xl shadow-lg">
+                            Save Changes
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        function ServicesTab({ services }) {
+            const calculateDaysLeft = (expiryDate) => {
+                const diff = new Date(expiryDate).getTime() - new Date().getTime();
+                return Math.ceil(diff / (1000 * 3600 * 24));
+            };
+
+            const hasExpiringServices = services.some(s => {
+                const days = calculateDaysLeft(s.expiry_date);
+                return days >= 0 && days <= 15;
+            });
+
+            return (
+                <div className="space-y-6">
+                    {hasExpiringServices && (
+                        <div className="bg-rose-500/10 border-l-4 border-rose-500 text-rose-700 p-4 rounded-r-xl pulse-warning flex items-center shadow-sm">
+                            <i className="fas fa-exclamation-triangle text-xl mr-4"></i>
+                            <div>
+                                <h4 className="font-bold font-heading">Action Required</h4>
+                                <p className="text-sm">One or more of your services will expire in the next 15 days. Please review and arrange renewal to avoid service interruption.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {services.length === 0 ? (
+                            <div className="col-span-full p-10 text-center text-text-secondary glass-card rounded-2xl">
+                                No active services found.
+                            </div>
+                        ) : (
+                            services.map(service => {
+                                const daysLeft = calculateDaysLeft(service.expiry_date);
+                                const isExpiringSoon = daysLeft <= 15 && daysLeft >= 0;
+                                const isExpired = daysLeft < 0;
+
+                                return (
+                                    <div key={service.id} className="glass-card rounded-2xl p-8 flex flex-col relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent-cyan to-accent-purple opacity-50"></div>
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div>
+                                                <span className="inline-block px-3 py-1 bg-slate-100 text-slate-600 text-xs rounded-lg uppercase font-bold tracking-wider mb-3">
+                                                    {service.service_type}
+                                                </span>
+                                                <h3 className="text-2xl font-heading font-bold text-text-primary">{service.service_name}</h3>
+                                            </div>
+                                            <div className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm ${
+                                                isExpired ? 'bg-rose-100 text-rose-600' :
+                                                isExpiringSoon ? 'bg-rose-500 text-white pulse-warning' :
+                                                'bg-emerald-100 text-emerald-600'
+                                            }`}>
+                                                {isExpired ? 'Expired' : `Expires in ${daysLeft} days`}
+                                            </div>
+                                        </div>
+
+                                        {service.service_url && (
+                                            <div className="mb-6">
+                                                <p className="text-xs text-text-secondary uppercase tracking-wider font-semibold mb-2">Staging / Live URL</p>
+                                                <a href={`http://${service.service_url}`} target="_blank" rel="noreferrer" className="inline-flex items-center text-accent-cyan hover:text-accent-purple hover:underline transition font-medium bg-white/50 px-4 py-2 rounded-lg border border-accent-cyan/20">
+                                                    <i className="fas fa-external-link-alt mr-2"></i> {service.service_url}
+                                                </a>
+                                            </div>
+                                        )}
+
+                                        <div className="mt-auto pt-5 border-t border-slate-200/50 flex justify-between items-center text-sm text-text-secondary">
+                                            <span>Expiry Date:</span>
+                                            <span className="font-semibold text-text-primary bg-white/50 px-3 py-1 rounded-lg border border-slate-100">{new Date(service.expiry_date).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                )
+                            })
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function BillingTab({ invoices, refreshInvoices }) {
+            const handlePayment = async (invoice) => {
+                try {
+                    // 1. Create order on server
+                    const res = await fetch('../api/billing_api.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'create_order', invoice_id: invoice.id })
+                    });
+                    const orderData = await res.json();
+
+                    if (!res.ok || !orderData.success) {
+                        alert('Error initializing payment: ' + (orderData.error || 'Unknown error'));
+                        return;
+                    }
+
+                    // 2. Open Razorpay Checkout
+                    const options = {
+                        key: orderData.key_id,
+                        amount: orderData.amount,
+                        currency: orderData.currency,
+                        name: "Chat Tech Solutions",
+                        description: `Payment for Invoice #${invoice.id}`,
+                        order_id: orderData.order_id,
+                        handler: async function (response) {
+                            // 3. Verify payment on server
+                            const verifyRes = await fetch('../api/billing_api.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    action: 'verify_payment',
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature
+                                })
+                            });
+                            const verifyData = await verifyRes.json();
+
+                            if (verifyData.success) {
+                                alert('Payment successful!');
+                                refreshInvoices();
+                            } else {
+                                alert('Payment verification failed.');
+                            }
+                        },
+                        theme: {
+                            color: "#0891b2" // Chat Tech Cyan
+                        }
+                    };
+
+                    const rzp = new window.Razorpay(options);
+                    rzp.open();
+
+                } catch (err) {
+                    console.error(err);
+                    alert('An error occurred during the payment process.');
+                }
+            };
+
+            return (
+                <div className="glass-card rounded-2xl overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
+                                <th className="p-5 font-semibold">Invoice #</th>
+                                <th className="p-5 font-semibold">Amount</th>
+                                <th className="p-5 font-semibold">Due Date</th>
+                                <th className="p-5 font-semibold">Status</th>
+                                <th className="p-5 font-semibold text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {invoices.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="p-10 text-center text-text-secondary">No invoices found.</td>
+                                </tr>
+                            ) : (
+                                invoices.map(invoice => {
+                                    const isPaid = invoice.status === 'paid';
+                                    const isOverdue = invoice.status === 'overdue' || (!isPaid && new Date(invoice.due_date) < new Date());
+
+                                    return (
+                                        <tr key={invoice.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
+                                            <td className="p-5 text-text-secondary font-medium">INV-{String(invoice.id).padStart(4, '0')}</td>
+                                            <td className="p-5 text-xl font-heading font-bold text-text-primary">${parseFloat(invoice.amount).toFixed(2)}</td>
+                                            <td className="p-5 text-text-secondary">{new Date(invoice.due_date).toLocaleDateString()}</td>
+                                            <td className="p-5">
+                                                <span className={`inline-block px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm ${
+                                                    isPaid ? 'bg-emerald-100 text-emerald-600' :
+                                                    isOverdue ? 'bg-rose-100 text-rose-600' :
+                                                    'bg-amber-100 text-amber-600'
+                                                }`}>
+                                                    {isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
+                                                </span>
+                                            </td>
+                                            <td className="p-5 text-right">
+                                                {!isPaid && (
+                                                    <button
+                                                        onClick={() => handlePayment(invoice)}
+                                                        className="btn-primary px-6 py-2 text-sm font-semibold rounded-xl shadow transition"
+                                                    >
+                                                        Pay Now
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ClientDashboard />);
+    </script>
+</body>
+</html>
