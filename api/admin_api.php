@@ -59,6 +59,33 @@ if ($method === 'GET') {
         $stmt = $pdo->query("SELECT id, name, email, created_at FROM users WHERE role = 'client' ORDER BY id DESC");
         $clients = $stmt->fetchAll();
         jsonResponse($clients);
+    } elseif ($action === 'advanced_analytics') {
+        // Group revenue by month for the current year
+        global $db_type;
+        $date_func = $db_type === 'sqlite' ? "strftime('%Y-%m', due_date)" : "DATE_FORMAT(due_date, '%Y-%m')";
+
+        $stmt = $pdo->query("
+            SELECT $date_func as month, SUM(amount) as revenue
+            FROM invoices
+            WHERE status = 'paid'
+            GROUP BY month
+            ORDER BY month ASC
+        ");
+
+        $results = $stmt->fetchAll();
+
+        $months = [];
+        $revenues = [];
+
+        foreach ($results as $row) {
+            $months[] = $row['month'];
+            $revenues[] = $row['revenue'];
+        }
+
+        jsonResponse([
+            'labels' => $months,
+            'data' => $revenues
+        ]);
     } elseif ($action === 'settings') {
         $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings");
         $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);

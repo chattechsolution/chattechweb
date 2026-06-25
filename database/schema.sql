@@ -67,3 +67,13 @@ INSERT INTO `invoices` (`client_id`, `amount`, `status`, `due_date`) VALUES
 INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES
 ('razorpay_key_id', 'rzp_test_YOUR_KEY_ID'),
 ('razorpay_key_secret', 'YOUR_KEY_SECRET');
+
+CREATE TABLE IF NOT EXISTS `tickets` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `client_id` INT NOT NULL,
+    `subject` VARCHAR(255) NOT NULL,
+    `message` TEXT NOT NULL,
+    `status` ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+);

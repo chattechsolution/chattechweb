@@ -2,13 +2,14 @@
 // api/config.php
 
 // Database configuration
-// Using SQLite for testing since local MySQL may not be fully set up,
-// but code is structured so you can swap these for MySQL credentials.
-$db_host = getenv('DB_HOST') ?: '127.0.0.1';
-$db_name = getenv('DB_NAME') ?: 'crm_db';
+// Using environment variables for security. Do not hardcode credentials.
+$db_host = getenv('DB_HOST') ?: 'localhost:3306';
+$db_name = getenv('DB_NAME') ?: 'homesaf1_chattech_portal';
 $db_user = getenv('DB_USER') ?: 'root';
 $db_pass = getenv('DB_PASS') ?: '';
-$db_type = getenv('DB_TYPE') ?: 'sqlite'; // Defaulting to sqlite for sandboxed testability
+
+// Testing override
+$db_type = getenv('DB_TYPE') ?: 'mysql';
 
 $pdo = null;
 

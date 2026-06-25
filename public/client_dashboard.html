@@ -79,9 +79,10 @@
         }
 
         .glass-sidebar {
-            background: rgba(15, 23, 42, 0.95);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(0, 0, 0, 0.05);
         }
 
         .btn-primary {
@@ -130,6 +131,7 @@
             const [activeTab, setActiveTab] = useState('services');
             const [services, setServices] = useState([]);
             const [invoices, setInvoices] = useState([]);
+            const [tickets, setTickets] = useState([]);
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
 
@@ -141,8 +143,14 @@
                 if (user) {
                     if (activeTab === 'services') fetchServices();
                     if (activeTab === 'billing') fetchInvoices();
+                    if (activeTab === 'support') fetchTickets();
                 }
             }, [activeTab, user]);
+
+            const fetchTickets = async () => {
+                const res = await fetch('../api/client_api.php?action=tickets');
+                if (res.ok) setTickets(await res.json());
+            };
 
             const checkAuth = async () => {
                 const res = await fetch('../api/auth.php');
@@ -189,7 +197,7 @@
                     <div className="absolute bottom-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-accent-purple/5 blur-[120px] z-0 pointer-events-none"></div>
 
                     {/* Sidebar */}
-                    <div className="w-64 glass-sidebar text-white flex flex-col z-20 shadow-2xl">
+                    <div className="w-64 glass-sidebar text-slate-800 flex flex-col z-20 shadow-xl">
                         <div className="p-6">
                             <h2 className="text-2xl font-heading font-bold gradient-text">Client Portal</h2>
                             <p className="text-sm text-accent-cyan mt-1 font-medium truncate">{(user && user.name)}</p>
@@ -197,20 +205,32 @@
                         <nav className="flex-1 px-4 space-y-2 mt-4">
                             <button
                                 onClick={() => setActiveTab('services')}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'services' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'services' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
-                                <i className="fas fa-server w-6"></i> My Services
+                                <i className="fas fa-server w-6 mr-3 text-center"></i> My Services
                             </button>
                             <button
                                 onClick={() => setActiveTab('billing')}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'billing' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'billing' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
-                                <i className="fas fa-file-invoice-dollar w-6"></i> Billing
+                                <i className="fas fa-file-invoice-dollar w-6 mr-3 text-center"></i> Billing
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('support')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'support' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-life-ring w-6 mr-3 text-center"></i> Support/Tickets
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('profile')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'profile' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-user-cog w-6 mr-3 text-center"></i> Profile & Settings
                             </button>
                         </nav>
-                        <div className="p-4 border-t border-slate-800">
-                            <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-xl transition font-medium">
-                                <i className="fas fa-sign-out-alt w-6"></i> Logout
+                        <div className="p-4 border-t border-slate-100">
+                            <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition font-medium">
+                                <i className="fas fa-sign-out-alt w-6 mr-3 text-center"></i> Logout
                             </button>
                         </div>
                     </div>
@@ -225,12 +245,188 @@
                         </header>
 
                         <main className="flex-1 overflow-x-hidden overflow-y-auto p-8">
-                            <div>
+                            <div className="max-w-6xl mx-auto">
                                 {activeTab === 'services' && <ServicesTab services={services} />}
                                 {activeTab === 'billing' && <BillingTab invoices={invoices} refreshInvoices={fetchInvoices} />}
+                                {activeTab === 'support' && <SupportTab tickets={tickets} refreshTickets={fetchTickets} />}
+                                {activeTab === 'profile' && <ProfileTab user={user} />}
                             </div>
                         </main>
                     </div>
+                </div>
+            );
+        }
+
+        function SupportTab({ tickets, refreshTickets }) {
+            const [formData, setFormData] = useState({ subject: '', message: '' });
+            const [message, setMessage] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/client_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create_ticket', ...formData })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    setMessage('Ticket created successfully! We will get back to you soon.');
+                    setFormData({ subject: '', message: '' });
+                    refreshTickets();
+                } else {
+                    setMessage('Error: ' + (data.error || 'Failed to create ticket'));
+                }
+            };
+
+            return (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-1">
+                        <div className="glass-card rounded-2xl p-8">
+                            <h2 className="text-2xl font-heading font-semibold mb-6 text-text-primary">Create Ticket</h2>
+                            {message && (
+                                <div className={`mb-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                                    {message}
+                                </div>
+                            )}
+                            <form onSubmit={handleSubmit} className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-text-primary mb-2">Subject</label>
+                                    <input
+                                        type="text" required
+                                        value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})}
+                                        className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                                        placeholder="Brief summary of issue"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-primary mb-2">Message</label>
+                                    <textarea
+                                        required rows="5"
+                                        value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})}
+                                        className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition resize-none"
+                                        placeholder="Describe your issue in detail..."
+                                    ></textarea>
+                                </div>
+                                <button type="submit" className="btn-primary w-full py-4 font-semibold rounded-xl shadow-lg mt-2">
+                                    Submit Ticket
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div className="lg:col-span-2">
+                        <div className="glass-card rounded-2xl overflow-hidden">
+                            <div className="p-6 border-b border-slate-100/50">
+                                <h2 className="text-xl font-heading font-semibold text-text-primary">Your Tickets</h2>
+                            </div>
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
+                                        <th className="p-5 font-semibold">Subject</th>
+                                        <th className="p-5 font-semibold">Status</th>
+                                        <th className="p-5 font-semibold">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tickets.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="3" className="p-10 text-center text-text-secondary">No support tickets found.</td>
+                                        </tr>
+                                    ) : (
+                                        tickets.map(ticket => (
+                                            <tr key={ticket.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
+                                                <td className="p-5 font-medium text-text-primary">
+                                                    {ticket.subject}
+                                                </td>
+                                                <td className="p-5">
+                                                    <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                                                        ticket.status === 'open' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'
+                                                    }`}>
+                                                        {ticket.status}
+                                                    </span>
+                                                </td>
+                                                <td className="p-5 text-text-secondary text-sm">{new Date(ticket.created_at).toLocaleDateString()}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function ProfileTab({ user }) {
+            const [formData, setFormData] = useState({ name: (user && user.name) || '', email: (user && user.email) || '', password: '' });
+            const [message, setMessage] = useState('');
+
+            // To fetch full user details if needed, but session info is usually enough for basic profile
+            // We use user object from main state
+            useEffect(() => {
+                if(user) {
+                    setFormData(prev => ({...prev, name: user.name, email: user.email}));
+                }
+            }, [user]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/client_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'update_profile', ...formData })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    setMessage('Profile updated successfully! Refreshing...');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    setMessage('Error: ' + (data.error || 'Failed to update profile'));
+                }
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto glass-card rounded-2xl p-8">
+                    <h2 className="text-2xl font-heading font-semibold mb-2 text-text-primary">Profile & Settings</h2>
+                    <p className="text-text-secondary mb-8">Update your account details below. Leave password blank if you do not wish to change it.</p>
+
+                    {message && (
+                        <div className={`mb-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                            {message}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Full Name</label>
+                            <input
+                                type="text" required
+                                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Email Address</label>
+                            <input
+                                type="email" required
+                                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">New Password (Optional)</label>
+                            <input
+                                type="password"
+                                value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                                placeholder="Enter a new password"
+                            />
+                        </div>
+                        <button type="submit" className="btn-primary mt-4 px-8 py-4 font-semibold rounded-xl shadow-lg">
+                            Save Changes
+                        </button>
+                    </form>
                 </div>
             );
         }

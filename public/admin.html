@@ -56,6 +56,9 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         :root {
             --bg-primary: #f8f9fb;
@@ -87,9 +90,10 @@
         }
 
         .glass-sidebar {
-            background: rgba(15, 23, 42, 0.95);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(0, 0, 0, 0.05);
         }
 
         .btn-primary {
@@ -173,46 +177,52 @@
                     <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-accent-purple/5 blur-[120px] z-0 pointer-events-none"></div>
 
                     {/* Sidebar */}
-                    <div className="w-64 glass-sidebar text-white flex flex-col z-20 shadow-2xl">
+                    <div className="w-64 glass-sidebar text-slate-800 flex flex-col z-20 shadow-xl">
                         <div className="p-6">
                             <h2 className="text-2xl font-heading font-bold gradient-text">Chat Tech</h2>
-                            <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Admin Portal</p>
+                            <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Admin Portal</p>
                         </div>
                         <nav className="flex-1 px-4 space-y-2 mt-4">
                             <button
                                 onClick={() => setActiveTab('overview')}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'overview' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'overview' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
-                                <i className="fas fa-home w-6"></i> Overview
+                                <i className="fas fa-home w-6 mr-3 text-center"></i> Overview
                             </button>
                             <button
                                 onClick={() => setActiveTab('roster')}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'roster' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'roster' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
-                                <i className="fas fa-users w-6"></i> Client Roster
+                                <i className="fas fa-users w-6 mr-3 text-center"></i> Client Roster
                             </button>
                             <button
                                 onClick={() => setActiveTab('onboard')}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'onboard' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'onboard' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
-                                <i className="fas fa-user-plus w-6"></i> Onboard Client
+                                <i className="fas fa-user-plus w-6 mr-3 text-center"></i> Onboard Client
                             </button>
                             <button
                                 onClick={() => setActiveTab('financials')}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'financials' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'financials' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
-                                <i className="fas fa-chart-line w-6"></i> Financials
+                                <i className="fas fa-chart-line w-6 mr-3 text-center"></i> Financials
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('analytics')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'analytics' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-chart-bar w-6 mr-3 text-center"></i> Analytics
                             </button>
                             <button
                                 onClick={() => setActiveTab('settings')}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'settings' ? 'bg-white/10 text-white font-medium' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'settings' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
-                                <i className="fas fa-cog w-6"></i> Settings
+                                <i className="fas fa-cog w-6 mr-3 text-center"></i> Settings
                             </button>
                         </nav>
-                        <div className="p-4 border-t border-slate-800">
-                            <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-xl transition font-medium">
-                                <i className="fas fa-sign-out-alt w-6"></i> Logout
+                        <div className="p-4 border-t border-slate-100">
+                            <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition font-medium">
+                                <i className="fas fa-sign-out-alt w-6 mr-3 text-center"></i> Logout
                             </button>
                         </div>
                     </div>
@@ -234,16 +244,106 @@
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-cyan"></div>
                                 </div>
                             ) : (
-                                <div>
+                                <div className="max-w-6xl mx-auto">
                                     {activeTab === 'overview' && <Overview stats={stats} />}
                                     {activeTab === 'roster' && <ClientRoster clients={clients} />}
                                     {activeTab === 'onboard' && <OnboardClient fetchClients={fetchClients} />}
                                     {activeTab === 'financials' && <Financials financials={financials} refresh={fetchFinancials} />}
+                                    {activeTab === 'analytics' && <AdvancedAnalytics />}
                                     {activeTab === 'settings' && <GlobalSettings />}
                                 </div>
                             )}
                         </main>
                     </div>
+                </div>
+            );
+        }
+
+        function AdvancedAnalytics() {
+            const [chartData, setChartData] = useState(null);
+
+            useEffect(() => {
+                fetch('../api/admin_api.php?action=advanced_analytics')
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data && data.labels) {
+                            setChartData(data);
+                        }
+                    });
+            }, []);
+
+            useEffect(() => {
+                if(chartData && window.Chart) {
+                    const canvas = document.getElementById('revenueChart');
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+
+                    // Create gradient for chart
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, 'rgba(8, 145, 178, 0.5)'); // accent-cyan
+                    gradient.addColorStop(1, 'rgba(8, 145, 178, 0.0)');
+
+                    let chartStatus = Chart.getChart("revenueChart");
+                    if (chartStatus != undefined) {
+                        chartStatus.destroy();
+                    }
+
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: chartData.labels,
+                            datasets: [{
+                                label: 'Revenue ($)',
+                                data: chartData.data,
+                                borderColor: '#0891b2',
+                                backgroundColor: gradient,
+                                borderWidth: 3,
+                                pointBackgroundColor: '#7c3aed',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: '#7c3aed',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(0,0,0,0.05)'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, [chartData]);
+
+            return (
+                <div className="glass-card rounded-2xl p-8">
+                    <h2 className="text-2xl font-heading font-semibold mb-6 text-text-primary">Revenue Over Time</h2>
+                    {!chartData ? (
+                        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-cyan"></div></div>
+                    ) : chartData.labels.length === 0 ? (
+                        <p className="text-text-secondary text-center py-12">No revenue data available yet.</p>
+                    ) : (
+                        <div className="h-96 w-full relative">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    )}
                 </div>
             );
         }
