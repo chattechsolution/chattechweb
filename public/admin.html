@@ -538,7 +538,7 @@
                                          className="text-amber-500 hover:underline font-medium text-sm">Suspend</button>}
 
 
-                                         className="text-amber-500 hover:underline font-medium text-sm mr-3">Suspend</button>}{client.status !== 'suspended' && <button onClick={() => handleSuspend(client.id)} className="text-amber-500 hover:underline font-medium text-sm mr-3">Suspend</button>}<button onClick={() => handleDelete(client.id)} className="text-rose-500 hover:underline font-medium text-sm">Delete</button>
+                                         {client.status !== 'suspended' && <button onClick={() => handleSuspend(client.id)} className="text-amber-500 hover:underline font-medium text-sm mr-3">Suspend</button>}<button onClick={() => handleDelete(client.id)} className="text-rose-500 hover:underline font-medium text-sm">Delete</button>
                                     </td>
                                 </tr>
                             ))}
