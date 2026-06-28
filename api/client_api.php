@@ -25,10 +25,15 @@ if ($method === 'GET') {
         $invoices = $stmt->fetchAll();
         jsonResponse($invoices);
     } elseif ($action === 'tickets') {
-        $stmt = $pdo->prepare("SELECT id, subject, message, status, created_at FROM tickets WHERE client_id = ? ORDER BY id DESC");
+        $stmt = $pdo->prepare("SELECT id, subject, message, status, admin_reply, created_at FROM tickets WHERE client_id = ? ORDER BY id DESC");
         $stmt->execute([$client_id]);
         $tickets = $stmt->fetchAll();
         jsonResponse($tickets);
+    } elseif ($action === 'quotes') {
+        $stmt = $pdo->prepare("SELECT id, amount, description, status, created_at FROM quotes WHERE client_id = ? ORDER BY id DESC");
+        $stmt->execute([$client_id]);
+        $quotes = $stmt->fetchAll();
+        jsonResponse($quotes);
     } else {
         jsonResponse(['error' => 'Invalid action'], 400);
     }
@@ -47,11 +52,11 @@ if ($method === 'GET') {
 
         if (!empty($password)) {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?");
-            $stmt->execute([$name, $email, $hashed_password, $client_id]);
+            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, address = ?, password = ? WHERE id = ?");
+            $stmt->execute([$name, $email, $input['phone'] ?? '', $input['address'] ?? '', $hashed_password, $client_id]);
         } else {
-            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ? WHERE id = ?");
-            $stmt->execute([$name, $email, $client_id]);
+            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, address = ? WHERE id = ?");
+            $stmt->execute([$name, $email, $input['phone'] ?? '', $input['address'] ?? '', $client_id]);
         }
 
         $_SESSION['user_name'] = $name; // Update session
@@ -67,6 +72,31 @@ if ($method === 'GET') {
         $stmt = $pdo->prepare("INSERT INTO tickets (client_id, subject, message, status) VALUES (?, ?, ?, 'open')");
         $stmt->execute([$client_id, $subject, $message]);
         jsonResponse(['success' => true, 'id' => $pdo->lastInsertId()]);
+    } elseif ($action === 'approve_quote') {
+        $quote_id = $input['quote_id'] ?? '';
+
+        $stmt = $pdo->prepare("SELECT amount, description, status FROM quotes WHERE id = ? AND client_id = ?");
+        $stmt->execute([$quote_id, $client_id]);
+        $quote = $stmt->fetch();
+
+        if (!$quote || $quote['status'] !== 'pending') {
+            jsonResponse(['error' => 'Invalid or already processed quote'], 400);
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("UPDATE quotes SET status = 'approved' WHERE id = ?")->execute([$quote_id]);
+
+            // Auto generate invoice
+            $pdo->prepare("INSERT INTO invoices (client_id, amount, status, due_date) VALUES (?, ?, 'pending', DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY))")
+                ->execute([$client_id, $quote['amount']]);
+
+            $pdo->commit();
+            jsonResponse(['success' => true]);
+        } catch (\Exception $e) {
+            $pdo->rollBack();
+            jsonResponse(['error' => 'Failed to approve quote'], 500);
+        }
     } else {
         jsonResponse(['error' => 'Invalid action'], 400);
     }

@@ -1,6 +1,9 @@
 CREATE TABLE IF NOT EXISTS `users` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `role` ENUM('admin', 'client') NOT NULL DEFAULT 'client',
+    `role` ENUM('admin', 'staff', 'client') NOT NULL DEFAULT 'client',
+    `status` ENUM('active', 'suspended') NOT NULL DEFAULT 'active',
+    `phone` VARCHAR(50) NULL,
+    `address` TEXT NULL,
     `name` VARCHAR(255) NOT NULL,
     `email` VARCHAR(255) NOT NULL UNIQUE,
     `password` VARCHAR(255) NOT NULL,
@@ -74,6 +77,37 @@ CREATE TABLE IF NOT EXISTS `tickets` (
     `subject` VARCHAR(255) NOT NULL,
     `message` TEXT NOT NULL,
     `status` ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+    `admin_reply` TEXT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS `quotes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `client_id` INT NOT NULL,
+    `amount` DECIMAL(10, 2) NOT NULL,
+    `description` TEXT NOT NULL,
+    `status` ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS `project_tasks` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT NULL,
+    `status` ENUM('To Do', 'In Progress', 'Done') NOT NULL DEFAULT 'To Do',
+    `assigned_to` INT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`assigned_to`) REFERENCES `users`(`id`) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS `audit_logs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NULL,
+    `action` VARCHAR(255) NOT NULL,
+    `details` TEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 );

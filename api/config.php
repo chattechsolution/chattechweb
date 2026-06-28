@@ -2,11 +2,10 @@
 // api/config.php
 
 // Database configuration
-// Using environment variables for security. Do not hardcode credentials.
-$db_host = getenv('DB_HOST') ?: 'localhost:3306';
-$db_name = getenv('DB_NAME') ?: 'homesaf1_chattech_portal';
-$db_user = getenv('DB_USER') ?: 'root';
-$db_pass = getenv('DB_PASS') ?: '';
+$db_host = getenv('DB_HOST') ?: 'YOUR_DB_HOST';
+$db_name = getenv('DB_NAME') ?: 'YOUR_DB_NAME';
+$db_user = getenv('DB_USER') ?: 'YOUR_DB_USER';
+$db_pass = getenv('DB_PASS') ?: 'YOUR_DB_PASS';
 
 // Testing override
 $db_type = getenv('DB_TYPE') ?: 'mysql';

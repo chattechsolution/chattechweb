@@ -132,6 +132,7 @@
             const [services, setServices] = useState([]);
             const [invoices, setInvoices] = useState([]);
             const [tickets, setTickets] = useState([]);
+            const [quotes, setQuotes] = useState([]);
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
 
@@ -144,8 +145,14 @@
                     if (activeTab === 'services') fetchServices();
                     if (activeTab === 'billing') fetchInvoices();
                     if (activeTab === 'support') fetchTickets();
+                    if (activeTab === 'quotes') fetchQuotes();
                 }
             }, [activeTab, user]);
+
+            const fetchQuotes = async () => {
+                const res = await fetch('../api/client_api.php?action=quotes');
+                if (res.ok) setQuotes(await res.json());
+            };
 
             const fetchTickets = async () => {
                 const res = await fetch('../api/client_api.php?action=tickets');
@@ -216,6 +223,12 @@
                                 <i className="fas fa-file-invoice-dollar w-6 mr-3 text-center"></i> Billing
                             </button>
                             <button
+                                onClick={() => setActiveTab('quotes')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'quotes' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-file-signature w-6 mr-3 text-center"></i> Quotes/Estimates
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('support')}
                                 className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'support' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
@@ -248,6 +261,7 @@
                             <div className="max-w-6xl mx-auto">
                                 {activeTab === 'services' && <ServicesTab services={services} />}
                                 {activeTab === 'billing' && <BillingTab invoices={invoices} refreshInvoices={fetchInvoices} />}
+                                {activeTab === 'quotes' && <QuotesTab quotes={quotes} refreshQuotes={fetchQuotes} />}
                                 {activeTab === 'support' && <SupportTab tickets={tickets} refreshTickets={fetchTickets} />}
                                 {activeTab === 'profile' && <ProfileTab user={user} />}
                             </div>
@@ -335,8 +349,13 @@
                                     ) : (
                                         tickets.map(ticket => (
                                             <tr key={ticket.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
-                                                <td className="p-5 font-medium text-text-primary">
-                                                    {ticket.subject}
+                                                <td className="p-5">
+                                                    <div className="font-medium text-text-primary mb-1">{ticket.subject}</div>
+                                                    {ticket.admin_reply && (
+                                                        <div className="mt-2 text-sm bg-emerald-50 text-emerald-800 p-3 rounded border border-emerald-100">
+                                                            <strong>Reply:</strong> {ticket.admin_reply}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="p-5">
                                                     <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
@@ -357,8 +376,76 @@
             );
         }
 
+        function QuotesTab({ quotes, refreshQuotes }) {
+            const [message, setMessage] = useState('');
+
+            const handleApprove = async (quote_id) => {
+                if(!confirm("By approving this quote, an invoice will be automatically generated. Proceed?")) return;
+                const res = await fetch('../api/client_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'approve_quote', quote_id })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    setMessage('Quote approved! An invoice has been generated in your Billing tab.');
+                    refreshQuotes();
+                } else {
+                    setMessage('Error: ' + (data.error || 'Failed to approve quote.'));
+                }
+            };
+
+            return (
+                <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-slate-100/50 flex justify-between items-center">
+                        <h2 className="text-xl font-heading font-semibold text-text-primary">Quotes & Estimates</h2>
+                    </div>
+                    {message && (
+                        <div className={`m-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                            {message}
+                        </div>
+                    )}
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
+                                <th className="p-5 font-semibold">Description</th>
+                                <th className="p-5 font-semibold">Amount</th>
+                                <th className="p-5 font-semibold">Status</th>
+                                <th className="p-5 font-semibold text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {quotes.length === 0 ? (
+                                <tr><td colSpan="4" className="p-10 text-center text-text-secondary">No quotes found.</td></tr>
+                            ) : (
+                                quotes.map(q => (
+                                    <tr key={q.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
+                                        <td className="p-5 text-text-primary">{q.description}</td>
+                                        <td className="p-5 font-bold font-heading text-xl">${parseFloat(q.amount).toFixed(2)}</td>
+                                        <td className="p-5">
+                                            <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                                                q.status === 'approved' ? 'bg-emerald-100 text-emerald-600' :
+                                                q.status === 'rejected' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'
+                                            }`}>
+                                                {q.status}
+                                            </span>
+                                        </td>
+                                        <td className="p-5 text-right">
+                                            {q.status === 'pending' && (
+                                                <button onClick={() => handleApprove(q.id)} className="btn-primary px-4 py-2 text-sm font-semibold rounded-xl shadow">Approve</button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
         function ProfileTab({ user }) {
-            const [formData, setFormData] = useState({ name: (user && user.name) || '', email: (user && user.email) || '', password: '' });
+            const [formData, setFormData] = useState({ name: (user && user.name) || '', email: (user && user.email) || '', phone: (user && user.phone) || '', address: (user && user.address) || '', password: '' });
             const [message, setMessage] = useState('');
 
             // To fetch full user details if needed, but session info is usually enough for basic profile
@@ -413,6 +500,21 @@
                                 value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
                                 className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
                             />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Phone</label>
+                            <input
+                                type="text"
+                                value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-text-primary mb-2">Address</label>
+                            <textarea
+                                value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})}
+                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"
+                            ></textarea>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-text-primary mb-2">New Password (Optional)</label>

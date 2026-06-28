@@ -124,6 +124,7 @@
             const [activeTab, setActiveTab] = useState('overview');
             const [stats, setStats] = useState({ total_clients: 0, pending_revenue: 0 });
             const [clients, setClients] = useState([]);
+            const [staff, setStaff] = useState([]);
             const [financials, setFinancials] = useState({ total_revenue: 0, total_expenses: 0, profit: 0, profit_margin: 0, expenses: [] });
             const [loading, setLoading] = useState(true);
 
@@ -131,8 +132,14 @@
                 checkAuth();
                 fetchStats();
                 fetchClients();
+                fetchStaff();
                 fetchFinancials();
             }, []);
+
+            const fetchStaff = async () => {
+                const res = await fetch('../api/admin_api.php?action=staff');
+                if (res.ok) setStaff(await res.json());
+            };
 
             const checkAuth = async () => {
                 const res = await fetch('../api/auth.php');
@@ -196,16 +203,34 @@
                                 <i className="fas fa-users w-6 mr-3 text-center"></i> Client Roster
                             </button>
                             <button
-                                onClick={() => setActiveTab('onboard')}
-                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'onboard' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                                onClick={() => setActiveTab('staff')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'staff' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
-                                <i className="fas fa-user-plus w-6 mr-3 text-center"></i> Onboard Client
+                                <i className="fas fa-user-shield w-6 mr-3 text-center"></i> Staff Management
                             </button>
                             <button
                                 onClick={() => setActiveTab('financials')}
                                 className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'financials' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
                             >
                                 <i className="fas fa-chart-line w-6 mr-3 text-center"></i> Financials
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('pos')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'pos' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-cash-register w-6 mr-3 text-center"></i> POS Terminal
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('projects')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'projects' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-columns w-6 mr-3 text-center"></i> Project Board
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('support')}
+                                className={`w-full flex items-center px-4 py-3 rounded-xl transition ${activeTab === 'support' ? 'bg-slate-100 text-accent-cyan font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
+                            >
+                                <i className="fas fa-life-ring w-6 mr-3 text-center"></i> Support Desk
                             </button>
                             <button
                                 onClick={() => setActiveTab('analytics')}
@@ -246,9 +271,12 @@
                             ) : (
                                 <div className="max-w-6xl mx-auto">
                                     {activeTab === 'overview' && <Overview stats={stats} />}
-                                    {activeTab === 'roster' && <ClientRoster clients={clients} />}
-                                    {activeTab === 'onboard' && <OnboardClient fetchClients={fetchClients} />}
+                                    {activeTab === 'roster' && <ClientRoster clients={clients} fetchClients={fetchClients} />}
+                                    {activeTab === 'staff' && <StaffManagement />}
                                     {activeTab === 'financials' && <Financials financials={financials} refresh={fetchFinancials} />}
+                                    {activeTab === 'pos' && <POSTerminal clients={clients} />}
+                                    {activeTab === 'projects' && <ProjectBoard staff={staff} />}
+                                    {activeTab === 'support' && <SupportDesk />}
                                     {activeTab === 'analytics' && <AdvancedAnalytics />}
                                     {activeTab === 'settings' && <GlobalSettings />}
                                 </div>
@@ -259,157 +287,8 @@
             );
         }
 
-        function AdvancedAnalytics() {
-            const [chartData, setChartData] = useState(null);
-
-            useEffect(() => {
-                fetch('../api/admin_api.php?action=advanced_analytics')
-                    .then(res => res.json())
-                    .then(data => {
-                        if(data && data.labels) {
-                            setChartData(data);
-                        }
-                    });
-            }, []);
-
-            useEffect(() => {
-                if(chartData && window.Chart) {
-                    const canvas = document.getElementById('revenueChart');
-                    if (!canvas) return;
-                    const ctx = canvas.getContext('2d');
-
-                    // Create gradient for chart
-                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                    gradient.addColorStop(0, 'rgba(8, 145, 178, 0.5)'); // accent-cyan
-                    gradient.addColorStop(1, 'rgba(8, 145, 178, 0.0)');
-
-                    let chartStatus = Chart.getChart("revenueChart");
-                    if (chartStatus != undefined) {
-                        chartStatus.destroy();
-                    }
-
-                    new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: chartData.labels,
-                            datasets: [{
-                                label: 'Revenue ($)',
-                                data: chartData.data,
-                                borderColor: '#0891b2',
-                                backgroundColor: gradient,
-                                borderWidth: 3,
-                                pointBackgroundColor: '#7c3aed',
-                                pointBorderColor: '#fff',
-                                pointHoverBackgroundColor: '#fff',
-                                pointHoverBorderColor: '#7c3aed',
-                                fill: true,
-                                tension: 0.4
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: false
-                                }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(0,0,0,0.05)'
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-            }, [chartData]);
-
-            return (
-                <div className="glass-card rounded-2xl p-8">
-                    <h2 className="text-2xl font-heading font-semibold mb-6 text-text-primary">Revenue Over Time</h2>
-                    {!chartData ? (
-                        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-cyan"></div></div>
-                    ) : chartData.labels.length === 0 ? (
-                        <p className="text-text-secondary text-center py-12">No revenue data available yet.</p>
-                    ) : (
-                        <div className="h-96 w-full relative">
-                            <canvas id="revenueChart"></canvas>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        function Overview({ stats }) {
-            return (
-                <div className="space-y-6">
-                    {stats.expiring_services_count > 0 && (
-                        <div className="bg-rose-500/10 border-l-4 border-rose-500 text-rose-700 p-4 rounded-r-xl pulse-warning flex items-center shadow-sm">
-                            <i className="fas fa-exclamation-triangle text-xl mr-4"></i>
-                            <div>
-                                <h4 className="font-bold font-heading">Action Required</h4>
-                                <p className="text-sm">{stats.expiring_services_count} service(s) will expire in the next 15 days. Please review to avoid client service interruption.</p>
-                            </div>
-                        </div>
-                    )}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div className="glass-card rounded-2xl p-6 border-l-4 border-l-accent-cyan relative overflow-hidden">
-                        <i className="fas fa-users absolute top-6 right-6 text-4xl text-accent-cyan/10"></i>
-                        <h3 className="text-text-secondary text-sm font-medium mb-2 uppercase tracking-wide">Total Clients</h3>
-                        <p className="text-4xl font-heading font-bold text-text-primary">{stats.total_clients}</p>
-                    </div>
-                    <div className="glass-card rounded-2xl p-6 border-l-4 border-l-emerald-500 relative overflow-hidden">
-                        <i className="fas fa-file-invoice-dollar absolute top-6 right-6 text-4xl text-emerald-500/10"></i>
-                        <h3 className="text-text-secondary text-sm font-medium mb-2 uppercase tracking-wide">Pending Revenue</h3>
-                        <p className="text-4xl font-heading font-bold text-text-primary">${parseFloat(stats.pending_revenue || 0).toFixed(2)}</p>
-                    </div>
-                </div>
-                </div>
-            );
-        }
-
-        function ClientRoster({ clients }) {
-            return (
-                <div className="glass-card rounded-2xl overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
-                                <th className="p-5 font-semibold">ID</th>
-                                <th className="p-5 font-semibold">Client Name</th>
-                                <th className="p-5 font-semibold">Email</th>
-                                <th className="p-5 font-semibold">Joined Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {clients.map(client => (
-                                <tr key={client.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
-                                    <td className="p-5 text-text-secondary">#{client.id}</td>
-                                    <td className="p-5 font-medium text-text-primary">{client.name}</td>
-                                    <td className="p-5 text-text-secondary">{client.email}</td>
-                                    <td className="p-5 text-text-secondary">{new Date(client.created_at).toLocaleDateString()}</td>
-                                </tr>
-                            ))}
-                            {clients.length === 0 && (
-                                <tr>
-                                    <td colSpan="4" className="p-10 text-center text-text-secondary">No clients found.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            );
-        }
-
-        function OnboardClient({ fetchClients }) {
-            const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+        function POSTerminal({ clients }) {
+            const [formData, setFormData] = useState({ client_id: '', amount: '', description: '', payment_method: 'cash' });
             const [message, setMessage] = useState('');
 
             const handleSubmit = async (e) => {
@@ -417,22 +296,22 @@
                 const res = await fetch('../api/admin_api.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'create_client', ...formData })
+                    body: JSON.stringify({ action: 'pos_checkout', ...formData })
                 });
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    setMessage('Client created successfully!');
-                    setFormData({ name: '', email: '', password: '' });
-                    fetchClients();
+                    setMessage(`Success! Invoice #${data.invoice_id} generated and marked as paid.`);
+                    setFormData({ client_id: '', amount: '', description: '', payment_method: 'cash' });
                 } else {
-                    setMessage('Error: ' + (data.error || 'Failed to create client'));
+                    setMessage('Error: ' + (data.error || 'Checkout failed'));
                 }
             };
 
             return (
-                <div className="max-w-2xl glass-card rounded-2xl p-8">
-                    <h2 className="text-2xl font-heading font-semibold mb-6 text-text-primary">Create New Client Account</h2>
+                <div className="max-w-2xl mx-auto glass-card rounded-2xl p-8">
+                    <h2 className="text-2xl font-heading font-semibold mb-2 text-text-primary"><i className="fas fa-cash-register text-accent-cyan mr-3"></i>Point of Sale</h2>
+                    <p className="text-text-secondary mb-8">Quickly ring up a client and generate an instant paid invoice.</p>
 
                     {message && (
                         <div className={`mb-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
@@ -442,33 +321,331 @@
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-medium text-text-primary mb-2">Company / Client Name</label>
-                            <input
-                                type="text" required
-                                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan outline-none transition"
-                            />
+                            <label className="block text-sm font-medium text-text-primary mb-2">Select Client</label>
+                            <select required value={formData.client_id} onChange={e => setFormData({...formData, client_id: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition">
+                                <option value="">-- Choose Client --</option>
+                                {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({c.email})</option>)}
+                            </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-text-primary mb-2">Email Address</label>
-                            <input
-                                type="email" required
-                                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
-                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan outline-none transition"
-                            />
+                            <label className="block text-sm font-medium text-text-primary mb-2">Description</label>
+                            <input type="text" required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" placeholder="e.g. Website Maintenance Retainer" />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-text-primary mb-2">Temporary Password</label>
-                            <input
-                                type="password" required
-                                value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
-                                className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan focus:border-accent-cyan outline-none transition"
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-text-primary mb-2">Amount ($)</label>
+                                <input type="number" step="0.01" required value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-text-primary mb-2">Payment Method</label>
+                                <select value={formData.payment_method} onChange={e => setFormData({...formData, payment_method: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition">
+                                    <option value="cash">Cash</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="card_terminal">Card Terminal (External)</option>
+                                </select>
+                            </div>
                         </div>
-                        <button type="submit" className="btn-primary mt-4 px-8 py-3 font-semibold rounded-xl shadow-lg">
-                            Create Client
+                        <button type="submit" className="btn-primary mt-4 w-full py-4 font-bold text-lg rounded-xl shadow-lg uppercase tracking-wide">
+                            Complete Checkout
                         </button>
                     </form>
+                </div>
+            );
+        }
+
+        function ProjectBoard({ staff }) {
+            const [tasks, setTasks] = useState([]);
+            const [view, setView] = useState('board');
+            const [formData, setFormData] = useState({ id: '', title: '', description: '', status: 'To Do', assigned_to: '' });
+
+            const fetchTasks = async () => {
+                const res = await fetch('../api/admin_api.php?action=projects');
+                if (res.ok) setTasks(await res.json());
+            };
+
+            useEffect(() => { fetchTasks(); }, []);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create_task', ...formData })
+                });
+                if (res.ok) {
+                    setView('board');
+                    fetchTasks();
+                }
+            };
+
+            const handleStatusChange = async (id, newStatus) => {
+                await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'update_task', id, status: newStatus })
+                });
+                fetchTasks();
+            };
+
+            if (view === 'add') {
+                return (
+                    <div className="max-w-2xl mx-auto glass-card rounded-2xl p-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-heading font-semibold text-text-primary">Create Task</h2>
+                            <button onClick={() => setView('board')} className="text-text-secondary hover:text-text-primary">Cancel</button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">Title</label><input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" /></div>
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">Description</label><textarea rows="3" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"></textarea></div>
+                            <div>
+                                <label className="block text-sm font-medium text-text-primary mb-2">Assign To</label>
+                                <select value={formData.assigned_to} onChange={e => setFormData({...formData, assigned_to: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition">
+                                    <option value="">-- Unassigned --</option>
+                                    {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <button type="submit" className="btn-primary mt-4 w-full py-4 font-semibold rounded-xl shadow-lg">Save Task</button>
+                        </form>
+                    </div>
+                );
+            }
+
+            const columns = ['To Do', 'In Progress', 'Done'];
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-heading font-semibold text-text-primary">Project Kanban</h2>
+                        <button onClick={() => { setFormData({ id: '', title: '', description: '', status: 'To Do', assigned_to: '' }); setView('add'); }} className="btn-primary px-5 py-2 text-sm font-semibold rounded-lg shadow">New Task</button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {columns.map(col => (
+                            <div key={col} className="bg-slate-100/50 rounded-2xl p-4 min-h-[500px] border border-slate-200/50">
+                                <h3 className="font-heading font-bold text-text-primary mb-4 pb-2 border-b border-slate-200 uppercase tracking-wide text-sm">{col} <span className="ml-2 text-xs bg-white text-slate-500 px-2 py-1 rounded-full shadow-sm">{tasks.filter(t => t.status === col).length}</span></h3>
+                                <div className="space-y-4">
+                                    {tasks.filter(t => t.status === col).map(task => (
+                                        <div key={task.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition">
+                                            <h4 className="font-bold text-text-primary mb-2">{task.title}</h4>
+                                            {task.description && <p className="text-sm text-text-secondary mb-4 line-clamp-3">{task.description}</p>}
+                                            <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-50">
+                                                <div className="flex items-center">
+                                                    {task.assigned_to ? (
+                                                        <span className="text-xs font-semibold bg-accent-cyan/10 text-accent-cyan px-2 py-1 rounded-lg truncate max-w-[100px]">{task.assignee_name}</span>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400 italic">Unassigned</span>
+                                                    )}
+                                                </div>
+                                                <select
+                                                    value={task.status}
+                                                    onChange={e => handleStatusChange(task.id, e.target.value)}
+                                                    className="text-xs bg-slate-50 border border-slate-200 rounded p-1 outline-none font-medium"
+                                                >
+                                                    {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function SupportDesk() {
+            const [tickets, setTickets] = useState([]);
+            const [selectedTicket, setSelectedTicket] = useState(null);
+            const [replyText, setReplyText] = useState('');
+
+            const fetchTickets = async () => {
+                const res = await fetch('../api/admin_api.php?action=tickets');
+                if (res.ok) setTickets(await res.json());
+            };
+
+            useEffect(() => { fetchTickets(); }, []);
+
+            const handleReply = async (e) => {
+                e.preventDefault();
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reply_ticket', id: selectedTicket.id, admin_reply: replyText, status: 'closed' })
+                });
+                if (res.ok) {
+                    setSelectedTicket(null);
+                    setReplyText('');
+                    fetchTickets();
+                }
+            };
+
+            if (selectedTicket) {
+                return (
+                    <div className="max-w-3xl mx-auto glass-card rounded-2xl p-8">
+                        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                            <h2 className="text-2xl font-heading font-semibold text-text-primary">Ticket #{selectedTicket.id}</h2>
+                            <button onClick={() => setSelectedTicket(null)} className="text-text-secondary hover:text-text-primary">Back to List</button>
+                        </div>
+                        <div className="mb-6">
+                            <p className="text-sm text-text-secondary uppercase tracking-wider font-bold mb-1">Subject</p>
+                            <h3 className="text-xl font-bold text-text-primary mb-4">{selectedTicket.subject}</h3>
+
+                            <p className="text-sm text-text-secondary uppercase tracking-wider font-bold mb-1">Client Name</p>
+                            <p className="text-text-primary mb-4">{selectedTicket.client_name}</p>
+
+                            <p className="text-sm text-text-secondary uppercase tracking-wider font-bold mb-1">Message</p>
+                            <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl text-text-primary whitespace-pre-wrap">{selectedTicket.message}</div>
+                        </div>
+
+                        {selectedTicket.status === 'open' ? (
+                            <form onSubmit={handleReply} className="mt-8 border-t border-slate-100 pt-6">
+                                <label className="block text-sm font-medium text-text-primary mb-2">Send Reply & Close Ticket</label>
+                                <textarea required rows="5" value={replyText} onChange={e => setReplyText(e.target.value)} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"></textarea>
+                                <button type="submit" className="btn-primary mt-4 px-6 py-3 font-semibold rounded-xl shadow-lg">Submit Reply</button>
+                            </form>
+                        ) : (
+                            <div className="mt-8 border-t border-slate-100 pt-6">
+                                <p className="text-sm text-text-secondary uppercase tracking-wider font-bold mb-2">Admin Reply</p>
+                                <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-emerald-800 whitespace-pre-wrap">{selectedTicket.admin_reply}</div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            return (
+                <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-slate-100/50">
+                        <h2 className="text-xl font-heading font-semibold text-text-primary">Support Desk</h2>
+                    </div>
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
+                                <th className="p-5 font-semibold">Client</th>
+                                <th className="p-5 font-semibold">Subject</th>
+                                <th className="p-5 font-semibold">Status</th>
+                                <th className="p-5 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tickets.map(ticket => (
+                                <tr key={ticket.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
+                                    <td className="p-5 font-medium text-text-primary">{client.name}{client.status === 'suspended' && <span className="ml-2 text-xs bg-rose-100 text-rose-600 px-2 py-1 rounded-full">Suspended</span>}</td>
+                                    <td className="p-5 text-text-secondary">{client.email}</td>
+                                    <td className="p-5 text-right space-x-3">
+                                        <button onClick={() => handleEdit(client)} className="text-accent-cyan hover:underline font-medium text-sm">Edit</button>
+                                         className="text-amber-500 hover:underline font-medium text-sm">Suspend</button>}
+
+
+                                         className="text-amber-500 hover:underline font-medium text-sm mr-3">Suspend</button>}{client.status !== 'suspended' && <button onClick={() => handleSuspend(client.id)} className="text-amber-500 hover:underline font-medium text-sm mr-3">Suspend</button>}<button onClick={() => handleDelete(client.id)} className="text-rose-500 hover:underline font-medium text-sm">Delete</button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {clients.length === 0 && <tr><td colSpan="3" className="p-10 text-center text-text-secondary">No clients found.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        function StaffManagement() {
+            const [staff, setStaff] = useState([]);
+            const [view, setView] = useState('list');
+            const [formData, setFormData] = useState({ id: '', name: '', email: '', password: '', role: 'staff' });
+
+            const fetchStaff = async () => {
+                const res = await fetch('../api/admin_api.php?action=staff');
+                if (res.ok) setStaff(await res.json());
+            };
+
+            useEffect(() => { fetchStaff(); }, [view]);
+
+
+            const handleSuspend = async (id) => {
+                if(!confirm("Suspend this client?")) return;
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'suspend_client', id })
+                });
+                if(res.ok) fetchClients();
+            };
+
+            const handleDelete = async (id) => {
+                if(!confirm("Are you sure you want to delete this staff member?")) return;
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete_staff', id })
+                });
+                if(res.ok) fetchStaff();
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const action = formData.id ? 'update_staff' : 'create_staff';
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, ...formData })
+                });
+                if (res.ok) setView('list');
+            };
+
+            if (view === 'add') {
+                return (
+                    <div className="max-w-2xl mx-auto glass-card rounded-2xl p-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-heading font-semibold text-text-primary">{formData.id ? 'Edit Staff' : 'Add Staff'}</h2>
+                            <button onClick={() => setView('list')} className="text-text-secondary hover:text-text-primary">Cancel</button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">Name</label><input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" /></div>
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">Email</label><input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" /></div>
+                            <div>
+                                <label className="block text-sm font-medium text-text-primary mb-2">Role</label>
+                                <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition">
+                                    <option value="staff">Staff</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">{formData.id ? 'New Password (Optional)' : 'Password'}</label><input type="password" required={!formData.id} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" /></div>
+                            <button type="submit" className="btn-primary mt-4 w-full py-4 font-semibold rounded-xl shadow-lg">Save</button>
+                        </form>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="flex justify-between items-center p-6 border-b border-slate-100/50">
+                        <h2 className="text-xl font-heading font-semibold text-text-primary">Staff Management</h2>
+                        <button onClick={() => { setFormData({ id: '', name: '', email: '', password: '', role: 'staff' }); setView('add'); }} className="btn-primary px-4 py-2 text-sm font-semibold rounded-lg">Add Staff</button>
+                    </div>
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
+                                <th className="p-5 font-semibold">Name</th>
+                                <th className="p-5 font-semibold">Email</th>
+                                <th className="p-5 font-semibold">Role</th>
+                                <th className="p-5 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {staff.map(s => (
+                                <tr key={s.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
+                                    <td className="p-5 font-medium text-text-primary">{s.name}</td>
+                                    <td className="p-5 text-text-secondary">{s.email}</td>
+                                    <td className="p-5 text-text-secondary uppercase text-xs font-bold">{s.role}</td>
+                                    <td className="p-5 text-right space-x-3">
+                                        <button onClick={() => { setFormData({ id: s.id, name: s.name, email: s.email, role: s.role, password: '' }); setView('add'); }} className="text-accent-cyan hover:underline font-medium text-sm">Edit</button>
+                                        <button onClick={() => handleDelete(s.id)} className="text-rose-500 hover:underline font-medium text-sm">Delete</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             );
         }
