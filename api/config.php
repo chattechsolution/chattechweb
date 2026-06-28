@@ -47,7 +47,23 @@ function isLoggedIn() {
 }
 
 function isAdmin() {
-    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
+    return isSuperAdmin();
+}
+
+function isSuperAdmin() {
+    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'super_admin';
+}
+
+function isSalesBilling() {
+    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'sales_billing';
+}
+
+function isFieldStaff() {
+    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'field_staff';
+}
+
+function isCustomer() {
+    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'customer';
 }
 
 function getUserId() {
