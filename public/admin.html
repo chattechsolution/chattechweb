@@ -287,6 +287,235 @@
             );
         }
 
+
+        function Overview({ stats }) {
+            return (
+                <div className="space-y-6">
+                    {stats.expiring_services_count > 0 && (
+                        <div className="bg-rose-500/10 border-l-4 border-rose-500 text-rose-700 p-4 rounded-r-xl pulse-warning flex items-center shadow-sm">
+                            <i className="fas fa-exclamation-triangle text-xl mr-4"></i>
+                            <div>
+                                <h4 className="font-bold font-heading">Action Required</h4>
+                                <p className="text-sm">{stats.expiring_services_count} service(s) will expire in the next 15 days. Please review to avoid client service interruption.</p>
+                            </div>
+                        </div>
+                    )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="glass-card rounded-2xl p-6 border-l-4 border-l-accent-cyan relative overflow-hidden">
+                        <i className="fas fa-users absolute top-6 right-6 text-4xl text-accent-cyan/10"></i>
+                        <h3 className="text-text-secondary text-sm font-medium mb-2 uppercase tracking-wide">Total Clients</h3>
+                        <p className="text-4xl font-heading font-bold text-text-primary">{stats.total_clients}</p>
+                    </div>
+                    <div className="glass-card rounded-2xl p-6 border-l-4 border-l-emerald-500 relative overflow-hidden">
+                        <i className="fas fa-file-invoice-dollar absolute top-6 right-6 text-4xl text-emerald-500/10"></i>
+                        <h3 className="text-text-secondary text-sm font-medium mb-2 uppercase tracking-wide">Pending Revenue</h3>
+                        <p className="text-4xl font-heading font-bold text-text-primary">${parseFloat(stats.pending_revenue || 0).toFixed(2)}</p>
+                    </div>
+                </div>
+                </div>
+            );
+        }
+
+        function ClientRoster({ clients, fetchClients }) {
+            const [view, setView] = useState('list'); // 'list' | 'add'
+            const [formData, setFormData] = useState({ id: '', name: '', email: '', password: '', phone: '', address: '' });
+            const [message, setMessage] = useState('');
+
+            const handleSuspend = async (id) => {
+                if(!confirm("Suspend this client?")) return;
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'suspend_client', id })
+                });
+                if(res.ok) fetchClients();
+            };
+
+            const handleDelete = async (id) => {
+                if(!confirm("Are you sure you want to delete this client?")) return;
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete_client', id })
+                });
+                if(res.ok) fetchClients();
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const action = formData.id ? 'update_client' : 'create_client';
+                const res = await fetch('../api/admin_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, ...formData })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    setMessage(`Client ${formData.id ? 'updated' : 'created'} successfully!`);
+                    setFormData({ id: '', name: '', email: '', password: '', phone: '', address: '' });
+                    fetchClients();
+                    setTimeout(() => setView('list'), 1500);
+                } else {
+                    setMessage('Error: ' + (data.error || 'Operation failed'));
+                }
+            };
+
+            const handleEdit = (client) => {
+                setFormData({ id: client.id, name: client.name, email: client.email, password: '', phone: client.phone || '', address: client.address || '' });
+                setView('add');
+            };
+
+            if (view === 'add') {
+                return (
+                    <div className="max-w-2xl mx-auto glass-card rounded-2xl p-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-heading font-semibold text-text-primary">{formData.id ? 'Edit Client' : 'Add New Client'}</h2>
+                            <button onClick={() => setView('list')} className="text-text-secondary hover:text-text-primary">Cancel</button>
+                        </div>
+                        {message && (
+                            <div className={`mb-6 p-4 rounded-xl border ${message.includes('Error') ? 'bg-rose-50/80 border-rose-200 text-rose-600' : 'bg-emerald-50/80 border-emerald-200 text-emerald-600'}`}>
+                                {message}
+                            </div>
+                        )}
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">Company / Name</label><input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" /></div>
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">Email</label><input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" /></div>
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">Phone</label><input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" /></div>
+                            <div><label className="block text-sm font-medium text-text-primary mb-2">Address</label><textarea value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition"></textarea></div>
+                            {!formData.id && <div><label className="block text-sm font-medium text-text-primary mb-2">Password</label><input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-5 py-3 bg-white/70 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent-cyan outline-none transition" /></div>}
+                            <button type="submit" className="btn-primary mt-4 w-full py-4 font-semibold rounded-xl shadow-lg">{formData.id ? 'Update' : 'Create'} Client</button>
+                        </form>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="flex justify-between items-center p-6 border-b border-slate-100/50">
+                        <h2 className="text-xl font-heading font-semibold text-text-primary">CRM Manager</h2>
+                        <button onClick={() => { setFormData({ id: '', name: '', email: '', password: '', phone: '', address: '' }); setView('add'); }} className="btn-primary px-4 py-2 text-sm font-semibold rounded-lg">Add Client</button>
+                    </div>
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-200/50 text-text-secondary text-sm uppercase tracking-wide">
+                                <th className="p-5 font-semibold">Client Name</th>
+                                <th className="p-5 font-semibold">Email</th>
+                                <th className="p-5 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {clients.map(client => (
+                                <tr key={client.id} className="border-b border-slate-100/50 hover:bg-slate-50/50 transition">
+                                    <td className="p-5 font-medium text-text-primary">
+                                        {client.name}
+                                        {client.status === 'suspended' && <span className="ml-2 text-xs bg-rose-100 text-rose-600 px-2 py-1 rounded-full">Suspended</span>}
+                                    </td>
+                                    <td className="p-5 text-text-secondary">{client.email}</td>
+                                    <td className="p-5 text-right space-x-3">
+                                        <button onClick={() => handleEdit(client)} className="text-accent-cyan hover:underline font-medium text-sm">Edit</button>
+                                        {client.status !== 'suspended' && <button onClick={() => handleSuspend(client.id)} className="text-amber-500 hover:underline font-medium text-sm mr-3">Suspend</button>}
+                                        <button onClick={() => handleDelete(client.id)} className="text-rose-500 hover:underline font-medium text-sm">Delete</button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {clients.length === 0 && <tr><td colSpan="3" className="p-10 text-center text-text-secondary">No clients found.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        function AdvancedAnalytics() {
+            const [chartData, setChartData] = useState(null);
+
+            useEffect(() => {
+                fetch('../api/admin_api.php?action=advanced_analytics')
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data && data.labels) {
+                            setChartData(data);
+                        }
+                    });
+            }, []);
+
+            useEffect(() => {
+                if(chartData && window.Chart) {
+                    const canvas = document.getElementById('revenueChart');
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+
+                    // Create gradient for chart
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, 'rgba(8, 145, 178, 0.5)'); // accent-cyan
+                    gradient.addColorStop(1, 'rgba(8, 145, 178, 0.0)');
+
+                    let chartStatus = Chart.getChart("revenueChart");
+                    if (chartStatus != undefined) {
+                        chartStatus.destroy();
+                    }
+
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: chartData.labels,
+                            datasets: [{
+                                label: 'Revenue ($)',
+                                data: chartData.data,
+                                borderColor: '#0891b2',
+                                backgroundColor: gradient,
+                                borderWidth: 3,
+                                pointBackgroundColor: '#7c3aed',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: '#7c3aed',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(0,0,0,0.05)'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, [chartData]);
+
+            return (
+                <div className="glass-card rounded-2xl p-8">
+                    <h2 className="text-2xl font-heading font-semibold mb-6 text-text-primary">Revenue Over Time</h2>
+                    {!chartData ? (
+                        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-cyan"></div></div>
+                    ) : chartData.labels.length === 0 ? (
+                        <p className="text-text-secondary text-center py-12">No revenue data available yet.</p>
+                    ) : (
+                        <div className="h-96 w-full relative">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+
         function POSTerminal({ clients }) {
             const [formData, setFormData] = useState({ client_id: '', amount: '', description: '', payment_method: 'cash' });
             const [message, setMessage] = useState('');
@@ -561,16 +790,6 @@
 
             useEffect(() => { fetchStaff(); }, [view]);
 
-
-            const handleSuspend = async (id) => {
-                if(!confirm("Suspend this client?")) return;
-                const res = await fetch('../api/admin_api.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'suspend_client', id })
-                });
-                if(res.ok) fetchClients();
-            };
 
             const handleDelete = async (id) => {
                 if(!confirm("Are you sure you want to delete this staff member?")) return;
